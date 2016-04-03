@@ -1,0 +1,13 @@
+build:
+  image: ensime/ensime:v2.x
+  pull: true
+  environment:
+    - SONATYPE_USERNAME=$$SONATYPE_USERNAME
+    - SONATYPE_PASSWORD=$$SONATYPE_PASSWORD
+  commands:
+    - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
+    - git log | head -n 20
+    - sbt test
+    - if [ -z "$CI_PULL_REQUEST" ] ; then
+        sbt publish ;
+      fi
