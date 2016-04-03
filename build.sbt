@@ -28,6 +28,6 @@ javacOptions ++= Seq(
 cancelable in Global := true
 fork := true
 
-javaOptions in (Test, test) += s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
+javaOptions in Test += s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
 
 unmanagedBase in Test := baseDirectory.value / "lib-test"

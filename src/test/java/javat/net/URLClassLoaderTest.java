@@ -17,6 +17,62 @@ import org.junit.*;
 import static java.nio.file.StandardCopyOption.*;
 
 public class URLClassLoaderTest {
+    private final File RES = new File(System.getProperty("test.resources.dir"));
+
+    // testOnly *URLClassLoaderTest -- --tests=greedyJarFile
+    /**
+     * This is what class-monkey is all about, making sure that (on
+     * Windows) the URLClassPath backend doesn't hold on to JarFile
+     * references while the URLClassLoader is active.
+     *
+     * NOTE: this is only problematic on Windows. This should always
+     * succeed on Linux.
+     */
+    @Test
+    public void greedyJarFile() throws Exception {
+        File tmp = Files.createTempDirectory("URLClassLoader").toFile();
+        File orig = new File(RES, "foo.jar");
+        File jarf = new File(tmp, "foo.jar");
+
+        Files.copy(orig.toPath(), jarf.toPath());
+
+        URL url = jarf.toURI().toURL();
+        URLClassLoader loader = new URLClassLoader(new URL[]{ url });
+
+        Class<?> c = loader.loadClass("Foo");
+        Assert.assertNotNull(c);
+
+        try {
+            Assert.assertTrue("failed to delete jar", jarf.delete());
+            Assert.assertFalse(jarf.exists());
+        } finally {
+            loader.close();
+        }
+    }
+
+    @Test
+    public void deleteJarWhenClosed() throws Exception {
+        File tmp = Files.createTempDirectory("URLClassLoader").toFile();
+        File orig = new File(RES, "foo.jar");
+        File jarf = new File(tmp, "foo.jar");
+
+        Files.copy(orig.toPath(), jarf.toPath());
+
+        URL url = jarf.toURI().toURL();
+        URLClassLoader loader = new URLClassLoader(new URL[]{ url });
+
+        Class<?> c = loader.loadClass("Foo");
+        Assert.assertNotNull(c);
+
+        loader.close();
+
+        try {
+            Assert.assertTrue("failed to delete jar", jarf.delete());
+            Assert.assertFalse(jarf.exists());
+        } finally {
+            loader.close();
+        }
+    }
 
     @Test
     public void b5077773() throws Exception {
@@ -58,6 +114,10 @@ public class URLClassLoaderTest {
         }
         public void addURL(URL url) {
             super.addURL(url);
+        }
+        @Override
+        public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            return super.loadClass(name, resolve);
         }
     }
 
