@@ -24,3 +24,7 @@ The classloader bug manifests as a memory leak in `sbt` on all platforms, but on
 **A catastrophic consequence is that compilations silently fail on Windows when using `exportJars`.**
 
 For some inexplicable reason, the references to the `JarFile` are *lost* when scanning classes for tests to run, and the GC can never reclaim the file handles. The only way to recover from this is to restart the `sbt` process.
+
+## Licence
+
+This is a derivative work of OpenJDK, and therefore must use the [GPLv2 with classpath exception](http://openjdk.java.net/legal/gplv2+ce.html). This is unfortunate because the [GPLv2 is incompatible with the GPLv3](http://www.gnu.org/licenses/old-licenses/gpl-2.0.html) (my preferred licence) and OpenJDK have not used the "or any later version" variant of the GPL which would have allowed it to be distributed under the GPLv3 or later.
