@@ -1,8 +1,7 @@
 There is a (reasonably) well-known bug in the JVM, that the URL classloader does not release its jars
 
-- http://management-platform.blogspot.co.uk/2009/01/classloaders-keeping-jar-files-open.html
-- https://github.com/ancoron/apache-cxf/blob/master/common/common/src/main/java/org/apache/cxf/common/logging/JDKBugHacks.java
-- http://stackoverflow.com/questions/7371277
+- [Classloaders Keeping JarFiles Open](http://management-platform.blogspot.co.uk/2009/01/classloaders-keeping-jar-files-open.html)
+- [apache-cxf/JDKBugHacks.java](https://github.com/ancoron/apache-cxf/blob/master/common/common/src/main/java/org/apache/cxf/common/logging/JDKBugHacks.java)
 
 the various attempts to workaround the bug are limited.
 
