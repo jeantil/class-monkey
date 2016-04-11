@@ -25,9 +25,37 @@ javacOptions ++= Seq(
   "-Xlint:-processing"
 )
 
+javaOptions in Test += s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
+
+javaOptions in Test <++= (packageBin in Compile) map { jar =>
+  // needs timestamp to force recompile
+  Seq("-javaagent:" + jar.getAbsolutePath, "-Ddummy=" + jar.lastModified)
+}
+
+packageOptions := Seq(
+  Package.ManifestAttributes(
+    "Premain-Class" -> "fommil.ClassMonkey",
+    /*
+     Boot-Class-Path must match the exact filename of the agent
+     artefact. When doing a publishLocal, this is agent-assembly, when
+     downloaded from Nexus, this is agent-{version}-assembly.jar. This
+     logic sort-of catches this (but won't work if you do a
+     publishLocal of a non-snapshot release). Presumably, this is a
+     difference between ivy and maven style publishing.
+     */
+    "Boot-Class-Path" -> {
+      if (version.value.contains("SNAP"))
+        (artifactPath in (Compile, packageBin)).value.getName
+      else
+        s"agent-${version.value}-assembly.jar"
+    },
+    "Can-Redefine-Classes" -> "true",
+    "Can-Retransform-Classes" -> "true",
+    "Main-Class" -> "NotSuitableAsMain"
+  )
+)
+
 cancelable in Global := true
 fork := true
-
-javaOptions in Test += s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
 
 unmanagedBase in Test := baseDirectory.value / "lib-test"
