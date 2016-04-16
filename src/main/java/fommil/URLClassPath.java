@@ -445,13 +445,26 @@ public class URLClassPath extends sun.misc.URLClassPath {
         }
     }
 
+    private static byte[] slurp(InputStream in) throws IOException {
+        try {
+            int nRead;
+            byte[] buffer = new byte[1024];
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            while ((nRead = in.read(buffer, 0, buffer.length)) != -1) {
+                out.write(buffer, 0, nRead);
+            }
+            return out.toByteArray();
+        } finally {
+            in.close();
+        }
+    }
+
     /**
      * Inner class used to represent a loader of resources and classes
      * from a base URL.
      */
     private static class Loader implements Closeable {
         private final URL base;
-        private JarFile jarfile; // if this points to a jar file
 
         /*
          * Creates a new Loader for the specified URL.
@@ -510,20 +523,24 @@ public class URLClassPath extends sun.misc.URLClassPath {
             } catch (MalformedURLException e) {
                 throw new IllegalArgumentException("name");
             }
-            final URLConnection uc;
+            final byte[] data;
             try {
                 if (check) {
                     URLClassPath.check(url);
                 }
-                uc = url.openConnection();
+                URLConnection uc = url.openConnection();
                 InputStream in = uc.getInputStream();
+
+                /* cache all content to avoid resource leaks */
+                data = slurp(uc.getInputStream());
+
                 if (uc instanceof JarURLConnection) {
-                    /* Need to remember the jar file so it can be closed
-                     * in a hurry.
-                     */
+                    /* Make sure the jar is closed */
                     JarURLConnection juc = (JarURLConnection)uc;
-                    jarfile = JarLoader.checkJar(juc.getJarFile());
+                    JarFile jarfile = JarLoader.checkJar(juc.getJarFile());
+                    jarfile.close();
                 }
+
             } catch (Exception e) {
                 return null;
             }
@@ -532,10 +549,10 @@ public class URLClassPath extends sun.misc.URLClassPath {
                 public URL getURL() { return url; }
                 public URL getCodeSourceURL() { return base; }
                 public InputStream getInputStream() throws IOException {
-                    return uc.getInputStream();
+                    return new ByteArrayInputStream(data);
                 }
                 public int getContentLength() throws IOException {
-                    return uc.getContentLength();
+                    return data.length;
                 }
             };
         }
@@ -554,9 +571,6 @@ public class URLClassPath extends sun.misc.URLClassPath {
          * method overridden in sub-classes
          */
         public void close () throws IOException {
-            if (jarfile != null) {
-                jarfile.close();
-            }
         }
 
         /*
