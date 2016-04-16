@@ -336,15 +336,17 @@ public class URLClassPath extends sun.misc.URLClassPath {
             return java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedExceptionAction<Loader>() {
                 public Loader run() throws IOException {
-                    String file = url.getFile();
-                    if (file != null && file.endsWith("/")) {
-                        if ("file".equals(url.getProtocol())) {
-                            return new FileLoader(url);
-                        } else {
-                            return new Loader(url);
-                        }
-                    } else {
+                    String protocol = url.getProtocol();
+                    if ("jar".equals(protocol)) {
                         return new JarLoader(url, jarHandler, lmap);
+                    } else if ("file".equals(protocol) && url.getFile().endsWith(".jar")) {
+                        return new JarLoader(url, jarHandler, lmap);
+                    } else if ("file".equals(protocol) && url.getFile().endsWith("/")) {
+                        return new FileLoader(url);
+                    } else if ("file".equals(protocol)) {
+                        return new Loader(url);
+                    } else {
+                        throw new UnsupportedOperationException("Your crazy 1990s information superhighway URL is not compatible with Class Monkey. " + url);
                     }
                 }
             });
