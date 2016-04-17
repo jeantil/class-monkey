@@ -6,10 +6,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.JarURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -95,16 +97,30 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
         URI uri = toURI(url);
         if (uris.add(uri)) {
-            System.out.println("Added " + uri + " with scheme " + uri.getScheme() + " and path " + uri.getPath());
-
             String scheme = uri.getScheme();
             if (scheme.equals("jar") || scheme.equals("zip")) {
-                providers.add(new ArchiveResourceProvider(uri));
+                try {
+                    // http://stackoverflow.com/questions/8014099
+                    JarURLConnection connection = (JarURLConnection) url.openConnection();
+                    URI file = toURI(connection.getJarFileURL());
+                    providers.add(new ArchiveResourceProvider(file, connection.getEntryName()));
+                } catch (IOException e) {
+                    throw new IllegalArgumentException(e);
+                }
             }
             if (uri.getScheme().equals("file")) {
-                //TODO
+                String path = uri.getPath();
+                if (path == null)
+                    // TODO: this might be a relative URI, reparse?
+                    throw new IllegalArgumentException("bad URI (no path): " + uri);
+                else if (path.endsWith(".jar") || path.endsWith(".zip"))
+                    providers.add(new ArchiveResourceProvider(uri, null));
+                else if (path.endsWith("/"))
+                    providers.add(new DirectoryResourceProvider(uri));
+                else
+                    throw new UnsupportedOperationException("Unknown archive: " + uri);
             } else {
-                providers.add(new GenericResourceProvider(uri));
+                providers.add(new GenericResourceProvider(uri, factory));
             }
         }
     }
@@ -179,12 +195,10 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
     static private final class DirectoryResourceProvider implements ResourceProvider {
         // should we perhaps be using the nio FileSystem API?
-        private final File dir;
         private final URI base;
 
-        public DirectoryResourceProvider(URI base, File dir) {
+        public DirectoryResourceProvider(URI base) {
             this.base = base;
-            this.dir = dir;
         }
 
         @Override
@@ -213,12 +227,12 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         // handles, which is no good at all, so drop down to old
         // fashioned JarFile / ZipFile access.
 
-        private final File archive;
-        private final URI base;
+        private final URI archive;
+        private final String base;
 
-        public ArchiveResourceProvider(URI base) {
+        public ArchiveResourceProvider(URI uri, String base) {
+            this.archive = uri;
             this.base = base;
-            this.archive = null;
         }
 
         @Override
@@ -244,9 +258,12 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
     static final class GenericResourceProvider implements ResourceProvider {
         private final URI base;
+        // factory is null to use the system default
+        private final URLStreamHandlerFactory factory;
 
-        public GenericResourceProvider(URI base) {
+        public GenericResourceProvider(URI base, URLStreamHandlerFactory factory) {
             this.base = base;
+            this.factory = factory;
         }
 
         @Override
