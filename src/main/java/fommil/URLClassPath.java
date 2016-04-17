@@ -3,6 +3,7 @@
 package fommil;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -94,14 +95,17 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
         URI uri = toURI(url);
         if (uris.add(uri)) {
-            System.out.println("Added " + uri + " with scheme " + uri.getScheme());
-            // valid possibilities are:
-            //
-            // 1. file (points to directory or archive)
-            // 2. jar/zip (an entry / directory within an archive)
-            // 3. some crazy network server location
+            System.out.println("Added " + uri + " with scheme " + uri.getScheme() + " and path " + uri.getPath());
 
-            // TODO atomic operation to pre-scan this URI
+            String scheme = uri.getScheme();
+            if (scheme.equals("jar") || scheme.equals("zip")) {
+                providers.add(new ArchiveResourceProvider(uri));
+            }
+            if (uri.getScheme().equals("file")) {
+                //TODO
+            } else {
+                providers.add(new GenericResourceProvider(uri));
+            }
         }
     }
 
@@ -173,7 +177,16 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         List<SimpleResource> getAll(String name);
     }
 
-    static final class DirectoryResourceProvider implements ResourceProvider {
+    static private final class DirectoryResourceProvider implements ResourceProvider {
+        // should we perhaps be using the nio FileSystem API?
+        private final File dir;
+        private final URI base;
+
+        public DirectoryResourceProvider(URI base, File dir) {
+            this.base = base;
+            this.dir = dir;
+        }
+
         @Override
         public URI findFirst(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
@@ -196,6 +209,18 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     }
 
     static final class ArchiveResourceProvider implements ResourceProvider {
+        // The nio FileSystem API is reported to keep persistent file
+        // handles, which is no good at all, so drop down to old
+        // fashioned JarFile / ZipFile access.
+
+        private final File archive;
+        private final URI base;
+
+        public ArchiveResourceProvider(URI base) {
+            this.base = base;
+            this.archive = null;
+        }
+
         @Override
         public URI findFirst(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
@@ -218,6 +243,12 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     }
 
     static final class GenericResourceProvider implements ResourceProvider {
+        private final URI base;
+
+        public GenericResourceProvider(URI base) {
+            this.base = base;
+        }
+
         @Override
         public URI findFirst(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
