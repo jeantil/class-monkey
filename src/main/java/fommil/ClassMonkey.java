@@ -1,5 +1,5 @@
 // Copyright (C) 2016 Sam Halliday
-// Licence: http://openjdk.java.net/legal/gplv2+ce.html
+// License: http://www.gnu.org/software/classpath/license.html
 package fommil;
 
 import java.lang.instrument.*;
@@ -7,8 +7,6 @@ import java.security.ProtectionDomain;
 import java.util.logging.*;
 
 import org.objectweb.asm.*;
-import org.objectweb.asm.commons.ClassRemapper;
-import org.objectweb.asm.commons.SimpleRemapper;
 
 final class ClassMonkey implements ClassFileTransformer {
     static private final Logger log = Logger.getLogger(ClassMonkey.class.getName());

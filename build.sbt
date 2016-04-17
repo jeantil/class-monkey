@@ -6,11 +6,10 @@ version := "1.7.0-SNAPSHOT"
 autoScalaLibrary := false
 crossPaths := false
 
-SonatypeSupport.sonatype("fommil", "class-monkey", SonatypeSupport.GPL2ce)
+SonatypeSupport.sonatype("fommil", "class-monkey", SonatypeSupport.GPL3ce)
 
 libraryDependencies ++= Seq(
   "org.ow2.asm" % "asm" % "5.1",
-  "org.ow2.asm" % "asm-commons" % "5.1",
   "com.novocode" % "junit-interface" % "0.11" % "test",
   "junit" % "junit" % "4.12" % "test"
 )

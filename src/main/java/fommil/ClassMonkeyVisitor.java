@@ -1,5 +1,5 @@
 // Copyright (C) 2016 Sam Halliday
-// Licence: http://openjdk.java.net/legal/gplv2+ce.html
+// License: http://www.gnu.org/software/classpath/license.html
 package fommil;
 
 import org.objectweb.asm.*;

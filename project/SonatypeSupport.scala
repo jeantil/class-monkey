@@ -6,6 +6,7 @@ import Keys._
 
 object SonatypeSupport {
   val GPL3 = ("GPL 3.0" -> url("http://www.gnu.org/licenses/gpl.html"))
+  val GPL3ce = ("GPL 3.0 Classpath Exception" -> url("http://www.gnu.org/software/classpath/license.html"))
   val GPL2ce = ("GPL 2.0 Classpath Exception" -> url("http://openjdk.java.net/legal/gplv2+ce.html"))
   val LGPL3 = ("LGPL 3.0" -> url("http://www.gnu.org/licenses/lgpl.html"))
   val Apache2 = ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
