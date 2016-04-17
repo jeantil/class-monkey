@@ -5,6 +5,10 @@ package fommil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 
 /**
  * The obligatory *Utils class.
@@ -29,4 +33,25 @@ final class ClassMonkeyUtils {
         }
     }
 
+    /**
+     * Perform the conversion without checked exceptions.
+     */
+    static URL toURL(URI uri) {
+        try {
+            return uri.toURL();
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException(uri + " is not a valid URL", e);
+        }
+    }
+
+    /**
+     * Perform the conversion without checked exceptions.
+     */
+    static URI toURI(URL url) {
+        try {
+            return url.toURI();
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(url + " is not a valid URI", e);
+        }
+    }
 }
