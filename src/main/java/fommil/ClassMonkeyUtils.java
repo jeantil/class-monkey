@@ -20,6 +20,7 @@ final class ClassMonkeyUtils {
      * Fully consume an InputStream into a byte array, and close the input.
      */
     static byte[] slurp(InputStream in) throws IOException {
+        if (in == null) throw new NullPointerException("`in' must not be null");
         try {
             int nRead;
             byte[] buffer = new byte[1024];
@@ -37,6 +38,7 @@ final class ClassMonkeyUtils {
      * Perform the conversion without checked exceptions.
      */
     static URL toURL(URI uri) {
+        if (uri == null) throw new NullPointerException("`uri' must not be null");
         try {
             return uri.toURL();
         } catch (MalformedURLException e) {
@@ -48,6 +50,7 @@ final class ClassMonkeyUtils {
      * Perform the conversion without checked exceptions.
      */
     static URI toURI(URL url) {
+        if (url == null) throw new NullPointerException("`url' must not be null");
         try {
             return url.toURI();
         } catch (URISyntaxException e) {
