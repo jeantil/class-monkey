@@ -2,11 +2,13 @@
 // License: http://www.gnu.org/software/classpath/license.html
 package fommil;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.CodeSigner;
+import java.util.Arrays;
 import java.util.jar.Manifest;
 
 /**
@@ -14,39 +16,64 @@ import java.util.jar.Manifest;
  * sun.misc.Resource designed to be stateless, simple and not leak any
  * resources.
  */
-final public class SimpleResource extends sun.misc.Resource {
+final class SimpleResource extends sun.misc.Resource {
+
+    private final String name;
+    private final URL url;
+    private final byte[] bytes;
+
+    // assumes that creater is trusted and will not retain a reference to bytes
+    SimpleResource(String name, URL url, byte[] bytes) {
+        if (name == null) throw new IllegalArgumentException("`name' must not be null");
+        if (url == null) throw new IllegalArgumentException("`url' must not be null");
+        if (bytes == null) throw new IllegalArgumentException("`bytes' must not be null");
+
+        this.name = name;
+        this.url = url;
+        this.bytes = bytes;
+    }
+
+    @Override
     public String getName() {
-        return null;
+        return name;
     }
 
+    @Override
     public URL getURL() {
-        return null;
-    }
-
-    public URL getCodeSourceURL() {
-        return null;
-    }
-
-    public InputStream getInputStream() throws IOException {
-        return null;
-    }
-
-    public int getContentLength() throws IOException {
-        return -1;
+        return url;
     }
 
     @Override
     public byte[] getBytes() throws IOException {
-        return null;
+        return bytes.clone();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // simple wrappers
+    @Override
+    public InputStream getInputStream() throws IOException {
+        return new ByteArrayInputStream(bytes);
+    }
+
+    @Override
+    public int getContentLength() throws IOException {
+        return bytes.length;
     }
 
     @Override
     public ByteBuffer getByteBuffer() throws IOException {
+        return ByteBuffer.wrap(bytes.clone());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // things we don't care to implement...
+    @Override
+    public Manifest getManifest() throws IOException {
         return null;
     }
 
     @Override
-    public Manifest getManifest() throws IOException {
+    public URL getCodeSourceURL() {
         return null;
     }
 

@@ -4,6 +4,7 @@ package fommil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
@@ -141,56 +142,71 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // the core public API
     @Override
     public URL findResource(String name, boolean ignoredSecurityCheck) {
-        for (ResourceProvider provider : providers) {
-            URI found = provider.findFirst(name);
-            if (found != null) return toURL(found);
+        try {
+            for (ResourceProvider provider : providers) {
+                URI found = provider.find(name);
+                if (found != null) return toURL(found);
+            }
+            return null;
+        } catch (IOException e) {
+            throw new IllegalStateException("while finding " + name, e);
         }
-        return null;
     }
 
     @Override
     public sun.misc.Resource getResource(String name) {
-        for (ResourceProvider provider : providers) {
-            SimpleResource found = provider.getFirst(name);
-            if (found != null) return found;
+        try {
+            for (ResourceProvider provider : providers) {
+                SimpleResource found = provider.get(name);
+                if (found != null) return found;
+            }
+            return null;
+        } catch (IOException e) {
+            throw new IllegalStateException("while finding " + name, e);
         }
-        return null;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
     // exhaustive variants
     @Override
     public Enumeration<URL> findResources(String name, boolean ignoredSecurityCheck) {
-        Set<URI> all = new LinkedHashSet<>();
-        for (ResourceProvider provider : providers) {
-            List<URI> found = provider.findAll(name);
-            all.addAll(found);
+        try {
+            Set<URI> all = new LinkedHashSet<>();
+            for (ResourceProvider provider : providers) {
+                URI found = provider.find(name);
+                if (found != null)
+                    all.add(found);
+            }
+            List<URL> urls = new ArrayList<>();
+            for (URI uri : all) {
+                urls.add(toURL(uri));
+            }
+            return Collections.enumeration(urls);
+        } catch (IOException e) {
+            throw new IllegalStateException("while finding " + name, e);
         }
-        List<URL> urls = new ArrayList<>();
-        for (URI uri : all) {
-            urls.add(toURL(uri));
-        }
-        return Collections.enumeration(urls);
     }
 
     @Override
     public Enumeration<sun.misc.Resource> getResources(String name) {
-        Set<sun.misc.Resource> all = new LinkedHashSet<>();
-        for (ResourceProvider provider : providers) {
-            List<SimpleResource> found = provider.getAll(name);
-            all.addAll(found);
+        try {
+            Set<sun.misc.Resource> all = new LinkedHashSet<>();
+            for (ResourceProvider provider : providers) {
+                SimpleResource found = provider.get(name);
+                if (found != null)
+                    all.add(found);
+            }
+            return Collections.enumeration(all);
+        } catch (IOException e) {
+            throw new IllegalStateException("while finding " + name, e);
         }
-        return Collections.enumeration(all);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     // the core implementation
     static interface ResourceProvider {
-        URI findFirst(String name);
-        List<URI> findAll(String name);
-
-        SimpleResource getFirst(String name);
-        List<SimpleResource> getAll(String name);
+        URI find(String name) throws IOException;
+        SimpleResource get(String name)throws IOException;
     }
 
     static private final class DirectoryResourceProvider implements ResourceProvider {
@@ -202,23 +218,21 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         }
 
         @Override
-        public URI findFirst(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
+        public URI find(String name) throws IOException {
+            File file = new File(new File(base), name);
+            if (!file.isFile()) return null;
+            else return file.toURI();
         }
 
         @Override
-        public List<URI> findAll(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
+        public SimpleResource get(String name) throws IOException {
+            URI found = find(name);
+            if (found == null) return null;
 
-        @Override
-        public SimpleResource getFirst(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-
-        @Override
-        public List<SimpleResource> getAll(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
+            File file = new File(find(name));
+            InputStream is = new FileInputStream(file);
+            byte[] bytes = ClassMonkeyUtils.slurp(is);
+            return new SimpleResource(name, toURL(found), bytes);
         }
     }
 
@@ -236,24 +250,15 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         }
 
         @Override
-        public URI findFirst(String name) {
+        public URI find(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
         }
 
         @Override
-        public List<URI> findAll(String name) {
+        public SimpleResource get(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
         }
 
-        @Override
-        public SimpleResource getFirst(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-
-        @Override
-        public List<SimpleResource> getAll(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
     }
 
     static final class GenericResourceProvider implements ResourceProvider {
@@ -267,22 +272,12 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         }
 
         @Override
-        public URI findFirst(String name) {
+        public URI find(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
         }
 
         @Override
-        public List<URI> findAll(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-
-        @Override
-        public SimpleResource getFirst(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-
-        @Override
-        public List<SimpleResource> getAll(String name) {
+        public SimpleResource get(String name) {
             throw new UnsupportedOperationException("TODO for " + name);
         }
     }
