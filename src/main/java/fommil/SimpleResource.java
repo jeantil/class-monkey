@@ -23,6 +23,7 @@ final class SimpleResource extends sun.misc.Resource {
     private final byte[] bytes;
 
     // assumes that creater is trusted and will not retain a reference to bytes
+    // code can be null if this is not a .class file
     SimpleResource(String name, URL url, byte[] bytes) {
         if (name == null) throw new IllegalArgumentException("`name' must not be null");
         if (url == null) throw new IllegalArgumentException("`url' must not be null");
@@ -65,15 +66,17 @@ final class SimpleResource extends sun.misc.Resource {
         return ByteBuffer.wrap(bytes.clone());
     }
 
+    // I don't really understand this one
+    @Override
+    public URL getCodeSourceURL() {
+        if (!name.endsWith(".class")) return null;
+        return url;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // things we don't care to implement...
     @Override
     public Manifest getManifest() throws IOException {
-        return null;
-    }
-
-    @Override
-    public URL getCodeSourceURL() {
         return null;
     }
 

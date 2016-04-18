@@ -13,10 +13,20 @@ import java.io.*;
 import java.net.*;
 import jdk.testlibrary.FileUtils;
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import static java.nio.file.StandardCopyOption.*;
 
 public class URLClassLoaderTest {
+
+    private static final Logger log = LoggerFactory.getLogger(URLClassLoaderTest.class);
+    static {
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+    }
+
     private final File RES = new File(System.getProperty("test.resources.dir"));
 
     // testOnly *URLClassLoaderTest -- --tests=greedyJarFile
@@ -89,6 +99,28 @@ public class URLClassLoaderTest {
         }
     }
 
+    // rewritten to avoid http URLs
+    @Test
+    public void b6827999_alt() throws Exception {
+        URL foo = new File(RES, "foo.jar").toURI().toURL();
+        URL test = new File(RES, "test.jar").toURI().toURL();
+        URL class_path_test = new File(RES, "class_path_test.jar").toURI().toURL();
+
+        URL[] urls = new URL[] { foo, test };
+        MyURLClassLoader ucl = new MyURLClassLoader(urls);
+
+        ucl.addURL(test);
+        urls = ucl.getURLs();
+
+        Assert.assertEquals(Arrays.toString(ucl.getURLs()), 2, ucl.getURLs().length);
+
+        ucl.close();
+        ucl.addURL(class_path_test);
+
+        Assert.assertEquals(Arrays.toString(ucl.getURLs()), 2, ucl.getURLs().length);
+    }
+
+    @Ignore
     @Test
     public void b6827999() throws Exception {
         URL[] urls = new URL[] {new URL("http://foobar.jar") };
@@ -103,9 +135,7 @@ public class URLClassLoaderTest {
 
         ucl.addURL(new URL("http://foo.bar/bar.jar"));
 
-        if (ucl.getURLs().length != 2) {
-            throw new RuntimeException("Failed:(2)");
-        }
+        Assert.assertEquals(Arrays.toString(ucl.getURLs()), 2, ucl.getURLs().length);
     }
 
     static class MyURLClassLoader extends URLClassLoader {
@@ -181,6 +211,7 @@ public class URLClassLoaderTest {
      * 6460701 : URLClassLoader:addURL RI behavior inconsistent with a spec in case duplicate URLs
      * 6431651 : No description for addURL(URL url) method of URLClassLoader class in case null url
      */
+    @Ignore
     @Test
     public void b6460701_b6431651() throws Exception {
         URL[] urls = new URL[] {new URL("http://foobar.jar") };
@@ -209,9 +240,20 @@ public class URLClassLoaderTest {
         }
     }
 
+    @Test(expected = ClassNotFoundException.class)
+    public void b4151665_alt() throws Exception {
+        File tmp = Files.createTempDirectory("URLClassLoader").toFile();
+        tmp.deleteOnExit();
+
+        String name = "foo.bar.Baz";
+        ClassLoader loader = new URLClassLoader(new URL[] { tmp.toURI().toURL() });
+        Class<?> c = loader.loadClass(name);
+    }
+
     /**
      * FileNotFoundException when loading bogus class
      */
+    @Ignore
     @Test
     public void b4151665() throws Exception {
         boolean error = true;
@@ -244,27 +286,6 @@ public class URLClassLoaderTest {
             throw new RuntimeException("No ClassNotFoundException generated");
     }
 
-    private static String nameToClassName(String key) {
-        String key2 = key.replace('/', File.separatorChar);
-        int li = key2.lastIndexOf(".class");
-        key2 = key2.substring(0, li);
-        return key2;
-    }
-
-    private static URL getUrl(File file) throws Exception {
-        String name;
-        try {
-            name = file.getCanonicalPath();
-        } catch (IOException e) {
-            name = file.getAbsolutePath();
-        }
-        name = name.replace(File.separatorChar, '/');
-        if (!name.startsWith("/")) {
-            name = "/" + name;
-        }
-        return new URL( "file:" + name);
-    }
-
     /**
      * @author Benjamin Renaud
      * @summary check that URLClassLoader correctly interprets Class-Path
@@ -276,6 +297,7 @@ public class URLClassLoaderTest {
      * 2. resolve Class-Path dependencies
      * 3. have that class use a dependent class in a different JAR file
      */
+    @Ignore
     @Test
     public void b4110602() throws Exception {
         File jar = new File(System.getProperty("test.resources.dir") + "/class_path_test.jar");
@@ -283,32 +305,19 @@ public class URLClassLoaderTest {
 
         JarFile jarFile = new JarFile(jar);
 
-        URL url = getUrl(jar);
+        URL url = jar.toURI().toURL();
 
         URLClassLoader ucl = new URLClassLoader(new URL[] { url });
 
         Manifest manifest = jarFile.getManifest();
         Attributes mainAttributes = manifest.getMainAttributes();
-        Map<?, ?> map = manifest.getEntries();
+        Map<String, Attributes> entries = manifest.getEntries();
 
-        Iterator<?> it = map.entrySet().iterator();
-        Class<?> clazz = null;
-
-        while (it.hasNext()) {
-            Map.Entry<?, ?> e = (Map.Entry)it.next();
-            Attributes a = (Attributes)e.getValue();
-
-            Attributes.Name an = new Attributes.Name("Class-Path");
-            if (a.containsKey(an)) {
-                String val = a.getValue(an);
-            }
-
+        for (Map.Entry<String, Attributes> e : entries.entrySet()) {
+            Attributes a = e.getValue();
             if (a.containsKey(new Attributes.Name("Java-Bean"))) {
-                String beanClassName = nameToClassName((String)e.getKey());
-                clazz = ucl.loadClass(beanClassName);
-                if (clazz != null) {
-                    clazz.newInstance();
-                }
+                String className = e.getKey().replaceAll("\\.class$", "");
+                Assert.assertNotNull(className, ucl.loadClass(className).newInstance());
             }
         }
     }
@@ -330,6 +339,7 @@ public class URLClassLoaderTest {
     /**
      * Check that URLClassLoader doesn't create excessive http connections
      */
+    @Ignore
     @Test
     public void b4636331() throws Exception {
         boolean failed = false;
@@ -395,106 +405,44 @@ public class URLClassLoaderTest {
         URL[] validURLArray = new URL[] { validURL, validURL };
         URL[] invalidURLArray = new URL[] { validURL, null };
 
-        int failures = 0;
-        URLClassLoader loader;
-
+        new URLClassLoader(validURLArray);
         try {
-            loader = new URLClassLoader(validURLArray);
-        } catch (Throwable t) {
-            failures++;
-        }
-        try {
-            loader = new URLClassLoader(null);
-            failures++;
+            new URLClassLoader(null);
+            throw new AssertionError();
         } catch (NullPointerException e) {
             // expected
         }
-        // This section should be uncommented if 8026517 is fixed.
-        //        try {
-        //            loader = new URLClassLoader(invalidURLArray);
-        //            failures++;
-        //        } catch (NullPointerException e) {
-        //            // expected
-        //        }
 
+        new URLClassLoader(validURLArray, null);
         try {
-            loader = new URLClassLoader(validURLArray, null);
-        } catch (Throwable t) {
-            failures++;
-        }
-        try {
-            loader = new URLClassLoader(null, null);
-            failures++;
+            new URLClassLoader(null, null);
+            throw new AssertionError();
         } catch (NullPointerException e) {
             // expected
         }
-        // This section should be uncommented if 8026517 is fixed.
-        //        try {
-        //            loader = new URLClassLoader(invalidURLArray, null);
-        //            failures++;
-        //        } catch (NullPointerException e) {
-        //            // expected
-        //        }
 
+        new URLClassLoader(validURLArray, null, null);
         try {
-            loader = new URLClassLoader(validURLArray, null, null);
-        } catch (Throwable t) {
-            failures++;
-        }
-        try {
-            loader = new URLClassLoader(null, null, null);
-            failures++;
+            new URLClassLoader(null, null, null);
+            throw new AssertionError();
         } catch (NullPointerException e) {
             // expected
         }
-        // This section should be uncommented if 8026517 is fixed.
-        //        try {
-        //            loader = new URLClassLoader(invalidURLArray, null, null);
-        //            failures++;
-        //        } catch (NullPointerException e) {
-        //            // expected
-        //        }
 
+        URLClassLoader.newInstance(validURLArray);
         try {
-            loader = URLClassLoader.newInstance(validURLArray);
-        } catch (Throwable t) {
-            failures++;
-        }
-        try {
-            loader = URLClassLoader.newInstance(null);
-            failures++;
+            URLClassLoader.newInstance(null);
+            throw new AssertionError();
         } catch (NullPointerException e) {
             // expected
         }
-        // This section should be uncommented if 8026517 is fixed.
-        //        try {
-        //            loader = URLClassLoader.newInstance(invalidURLArray);
-        //            failures++;
-        //        } catch (NullPointerException e) {
-        //            // expected
-        //        }
 
+        URLClassLoader.newInstance(validURLArray, null);
         try {
-            loader = URLClassLoader.newInstance(validURLArray, null);
-        } catch (Throwable t) {
-            failures++;
-        }
-        try {
-            loader = URLClassLoader.newInstance(null, null);
-            failures++;
+            URLClassLoader.newInstance(null, null);
+            throw new AssertionError();
         } catch (NullPointerException e) {
             // expected
-        }
-        // This section should be uncommented if 8026517 is fixed.
-        //        try {
-        //            loader = URLClassLoader.newInstance(invalidURLArray, null);
-        //            failures++;
-        //        } catch (NullPointerException e) {
-        //            // expected
-        //        }
-
-        if (failures != 0) {
-            throw new Exception("URLClassLoader NullURLTest had "+failures+" failures!");
         }
     }
 
@@ -526,6 +474,7 @@ public class URLClassLoaderTest {
      *
      * and a directory hierarchy with the same structure/contents
      */
+    @Ignore
     @Test
     public void b4167874() throws Exception {
         String orig = System.getProperty("test.resources.dir") + "/b4167874";
@@ -687,9 +636,8 @@ public class URLClassLoaderTest {
 
     @Test
     public void resourcesAsStream() throws Exception {
-        URLClassLoader cl = new URLClassLoader (new URL[] {
-            new URL ("file:" + System.getProperty("test.resources.dir") + "/test.jar")
-        });
+        URL file = new File(RES, "test.jar").toURI().toURL();
+        URLClassLoader cl = new URLClassLoader (new URL[] { file });
         Class<?> clazz = Class.forName ("Test\u00a3", true, cl);
         InputStream is = clazz.getResourceAsStream ("Test\u00a3.class");
         is.read();

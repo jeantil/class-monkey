@@ -10,4 +10,13 @@ build:
     - sbt test
     - if [ -z "$CI_PULL_REQUEST" ] ; then
         sbt publish ;
+        sbt assembly ;
       fi
+
+# deploy:
+#   sftp:
+#     host: docs.typelevel.org
+#     username: typelevel
+#     destination_path: ensime.typelevel.org/
+#     files: 
+#       - target/scala-2.10/*-assembly.jar

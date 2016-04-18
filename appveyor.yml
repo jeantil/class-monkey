@@ -14,9 +14,10 @@ install:
   - cmd: git config core.symlinks true
   - cmd: git reset --hard
 build_script:
-  - sbt compile
-test_script:
   - sbt test
 cache:
   - C:\sbt\
   - C:\Users\appveyor\.ivy2
+  - C:\Users\appveyor\.coursier
+on_failure:
+  - appveyor PushArtifact -Path test.log

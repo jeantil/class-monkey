@@ -11,14 +11,16 @@ SonatypeSupport.sonatype("fommil", "class-monkey", SonatypeSupport.GPL3ce)
 libraryDependencies ++= Seq(
   "org.ow2.asm" % "asm" % "5.1",
   "com.novocode" % "junit-interface" % "0.11" % "test",
-  "junit" % "junit" % "4.12" % "test"
+  "junit" % "junit" % "4.12" % "test",
+  "ch.qos.logback" % "logback-classic" % "1.1.6" % "test",
+  "org.slf4j" % "jul-to-slf4j" % "1.7.19" % "test"
 )
 
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 
 test in assembly := {}
 
-javacOptions ++= Seq(
+javacOptions in compile ++= Seq(
   "-source", "1.7",
   "-target", "1.7",
   "-Xlint:all",
@@ -29,11 +31,13 @@ javacOptions ++= Seq(
   "-XDignore.symbol.file"
 )
 
-javaOptions in Test += s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
+javaOptions in Test ++= Seq(
+  s"-Dtest.resources.dir=${(resourceDirectory in Test).value}",
+  "-Dlogback.configurationFile=logback-test.xml"
+)
 
 javaOptions in Test <++= (assembly) map { jar =>
-  // needs timestamp to force recompile
-  Seq("-javaagent:" + jar.getAbsolutePath, "-Ddummy=" + jar.lastModified)
+  Seq("-javaagent:" + jar.getAbsolutePath)
 }
 
 packageOptions := Seq(

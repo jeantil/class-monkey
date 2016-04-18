@@ -1,3 +1,5 @@
+Windows: [![Build status](https://ci.appveyor.com/api/projects/status/9if66b9ymuddko8a?svg=true)](https://ci.appveyor.com/project/fommil/class-monkey) GNU/Linux: [![Build Status](http://fommil.com/api/badges/fommil/class-monkey/status.svg)](http://fommil.com/fommil/class-monkey) OS X: [![Build Status](https://travis-ci.org/fommil/class-monkey.svg?branch=master)](https://travis-ci.org/fommil/class-monkey)
+
 There is a (reasonably) well-known bug in the JVM, that the URL classloader does not release its jars
 
 - [Classloaders Keeping JarFiles Open](http://management-platform.blogspot.co.uk/2009/01/classloaders-keeping-jar-files-open.html)

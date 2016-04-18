@@ -2,28 +2,14 @@
 // License: http://www.gnu.org/software/classpath/license.html
 package fommil;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.JarURLConnection;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLStreamHandler;
-import java.net.URLStreamHandlerFactory;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.*;
+import java.util.zip.*;
 
 import static fommil.ClassMonkeyUtils.*;
 
@@ -36,15 +22,16 @@ import static fommil.ClassMonkeyUtils.*;
  * cost of an initial overhead). Archives are assumed to be immutable
  * for the lifetime of an instance.
  *
+ * "Class-Path" entries in Manifests are not supported (it's
+ * over-engineering): only explicitly added URLs will be scanned.
+ *
  * Directory based URLs are lazily fetched with no caching.
  *
- * Performance may be degraded for network protocols and no effort is
- * spent trying to cache such a ridiculous concept (let's be honest,
- * you shouldn't be using network classloaders in this day and age).
- *
+ * Network protocols are not supported (let's be honest, you shouldn't
+ * be using network classloaders in this day and age).
  *
  * No security checking is performed: all URIs and user requests are
- * trusted and whatever powers the JVM provides are used.
+ * trusted to the extend that the JVM's security manager allows.
  */
 final public class URLClassPath extends sun.misc.URLClassPath {
     private static final Logger log = Logger.getLogger(URLClassPath.class.getName());
@@ -53,6 +40,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     private final CopyOnWriteArraySet<URI> uris = new CopyOnWriteArraySet<>();
     private final CopyOnWriteArrayList<ResourceProvider> providers = new CopyOnWriteArrayList<>();
     private final URLStreamHandlerFactory factory;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     // primary constructor, intentionally disable the super
     // implementation by sending empty data.
@@ -71,9 +59,13 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         this(urls, null);
     }
 
-    // no-op because we hold no state
+    // legacy behaviour is to reject all future calls, even though we
+    // have nothing to close
     @Override
     public List<IOException> closeLoaders() {
+        if (log.isLoggable(Level.FINER))
+            log.finer("closeLoaders()");
+        closed.set(true);
         return Collections.emptyList();
     }
 
@@ -94,34 +86,43 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // for simplicity of implementation.
     @Override
     public void addURL(URL url) {
-        if (url == null) return;
+        if (log.isLoggable(Level.FINER))
+            log.finer("addURL(" + url + ")");
+        if (closed.get() || url == null) return;
 
         URI uri = toURI(url);
         if (uris.add(uri)) {
             String scheme = uri.getScheme();
-            if (scheme.equals("jar") || scheme.equals("zip")) {
+            if (scheme.equals("jar")) {
                 try {
                     // http://stackoverflow.com/questions/8014099
                     JarURLConnection connection = (JarURLConnection) url.openConnection();
-                    URI file = toURI(connection.getJarFileURL());
-                    providers.add(new ArchiveResourceProvider(file, connection.getEntryName()));
+                    URL jarURL = connection.getJarFileURL();
+                    URI jarURI = toURI(jarURL);
+                    if (log.isLoggable(Level.FINE))
+                        log.fine("addURL jarFileURL = " + jarURL + ", jarFileURI = " + jarURI);
+                    providers.add(new ArchiveResourceProvider(jarURI, connection.getEntryName()));
                 } catch (IOException e) {
-                    throw new IllegalArgumentException(e);
+                    throw new IllegalArgumentException(uri + " is a bad archive", e);
                 }
-            }
-            if (uri.getScheme().equals("file")) {
+            } else if (uri.getScheme().equals("file")) {
                 String path = uri.getPath();
                 if (path == null)
-                    // TODO: this might be a relative URI, reparse?
-                    throw new IllegalArgumentException("bad URI (no path): " + uri);
-                else if (path.endsWith(".jar") || path.endsWith(".zip"))
-                    providers.add(new ArchiveResourceProvider(uri, null));
-                else if (path.endsWith("/"))
+                    throw new IllegalArgumentException("bad URL (no path part) " + uri);
+
+                if (path.endsWith(".jar") || path.endsWith(".zip")) {
+                    try {
+                        providers.add(new ArchiveResourceProvider(uri, null));
+                    } catch (IOException e) {
+                        throw new IllegalArgumentException(uri + " is a bad archive", e);
+                    }
+                } else if (path.endsWith("/"))
                     providers.add(new DirectoryResourceProvider(uri));
                 else
                     throw new UnsupportedOperationException("Unknown archive: " + uri);
             } else {
-                providers.add(new GenericResourceProvider(uri, factory));
+                throw new UnsupportedOperationException("Generic URL scheme: " + uri);
+                //providers.add(new GenericResourceProvider(uri, factory));
             }
         }
     }
@@ -142,11 +143,14 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // the core public API
     @Override
     public URL findResource(String name, boolean ignoredSecurityCheck) {
+        if (closed.get()) return null;
         try {
             for (ResourceProvider provider : providers) {
                 URI found = provider.find(name);
                 if (found != null) return toURL(found);
             }
+            if (log.isLoggable(Level.FINE))
+                log.fine("findResource missed: " + name);
             return null;
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -155,11 +159,14 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
     @Override
     public sun.misc.Resource getResource(String name) {
+        if (closed.get()) return null;
         try {
             for (ResourceProvider provider : providers) {
                 SimpleResource found = provider.get(name);
                 if (found != null) return found;
             }
+            if (log.isLoggable(Level.FINE))
+                log.fine("getResource missed: " + name);
             return null;
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -170,6 +177,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // exhaustive variants
     @Override
     public Enumeration<URL> findResources(String name, boolean ignoredSecurityCheck) {
+        if (closed.get()) return null;
         try {
             Set<URI> all = new LinkedHashSet<>();
             for (ResourceProvider provider : providers) {
@@ -181,6 +189,9 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             for (URI uri : all) {
                 urls.add(toURL(uri));
             }
+            if (log.isLoggable(Level.FINE) && urls.isEmpty())
+                log.fine("findResources missed: " + name);
+
             return Collections.enumeration(urls);
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -189,6 +200,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
     @Override
     public Enumeration<sun.misc.Resource> getResources(String name) {
+        if (closed.get()) return null;
         try {
             Set<sun.misc.Resource> all = new LinkedHashSet<>();
             for (ResourceProvider provider : providers) {
@@ -196,6 +208,9 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                 if (found != null)
                     all.add(found);
             }
+            if (log.isLoggable(Level.FINE) && all.isEmpty())
+                log.fine("getResources missed: " + name);
+
             return Collections.enumeration(all);
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -210,6 +225,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     }
 
     static private final class DirectoryResourceProvider implements ResourceProvider {
+        private static final Logger log = Logger.getLogger(DirectoryResourceProvider.class.getName());
+
         // should we perhaps be using the nio FileSystem API?
         private final URI base;
 
@@ -234,31 +251,85 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             byte[] bytes = ClassMonkeyUtils.slurp(is);
             return new SimpleResource(name, toURL(found), bytes);
         }
+
+        @Override
+        public String toString() {
+            return "DirectoryResourceProvider(" + base + ")";
+        }
     }
 
     static final class ArchiveResourceProvider implements ResourceProvider {
+        private static final Logger log = Logger.getLogger(ArchiveResourceProvider.class.getName());
         // The nio FileSystem API is reported to keep persistent file
         // handles, which is no good at all, so drop down to old
         // fashioned JarFile / ZipFile access.
 
         private final URI archive;
         private final String base;
+        private final Map<String, ZipEntry> entriesByName = new HashMap<>();
 
-        public ArchiveResourceProvider(URI uri, String base) {
+        public ArchiveResourceProvider(URI uri, String base) throws IOException {
             this.archive = uri;
             this.base = base;
+
+            File file = new File(uri);
+            // legacy behaviour is to ignore files that don't exist
+            if (!file.isFile()) return;
+
+            try (
+                 ZipFile zip = new ZipFile(file);
+            ) {
+                List<? extends ZipEntry> entries = Collections.list(zip.entries());
+                for (ZipEntry entry : entries) {
+                    String name = entry.getName();
+                    if ((base == null || name.startsWith(base)) && !name.endsWith("/")) {
+                        if (log.isLoggable(Level.FINEST))
+                            log.finest(toString() + " += '" + name + "'");
+                        entriesByName.put(name, entry);
+                    }
+                }
+            } catch (RuntimeException e) {
+                throw new IllegalArgumentException(uri + " is a bad archive", e);
+            }
+
+            if (log.isLoggable(Level.FINER))
+                log.finer(toString() + " base=" + base);
         }
 
         @Override
-        public URI find(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
+        public URI find(String name) throws IOException {
+            if (log.isLoggable(Level.FINEST))
+                log.finest(toString() + ".find(" + name + ")");
+            name = name.replaceAll("^/", "");
+            if (!entriesByName.containsKey(name)) return null;
+            try {
+              return new URI("jar:" + archive + "!/" + name);
+            } catch (URISyntaxException e) {
+                throw new IOException(e);
+            }
         }
 
         @Override
-        public SimpleResource get(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
+        public SimpleResource get(String name) throws IOException {
+            if (log.isLoggable(Level.FINEST))
+                log.finest(toString() + ".get(" + name + ")");
+            name = name.replaceAll("^/", "");
+            ZipEntry entry = entriesByName.get(name);
+            URI uri = find(name);
+            if (entry == null || uri == null) return null;
+            try (
+                 ZipFile zip = new ZipFile(new File(archive));
+            ) {
+                InputStream in = zip.getInputStream(entry);
+                byte[] bytes = slurp(in);
+                return new SimpleResource(name, toURL(uri), bytes);
+            }
         }
 
+        @Override
+        public String toString() {
+            return "ArchiveResourceProvider(" + archive + ")";
+        }
     }
 
     static final class GenericResourceProvider implements ResourceProvider {

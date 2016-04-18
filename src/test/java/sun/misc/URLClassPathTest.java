@@ -12,8 +12,17 @@ import com.sun.net.httpserver.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 public class URLClassPathTest {
+
+    private static final Logger log = LoggerFactory.getLogger(URLClassPathTest.class);
+    static {
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+    }
 
     // NOTE: OpenJDK have tests under URLClassPath for bugs 4957669_and 5017871
     //       but neither bug report has anything to do with URLClassPath, nor

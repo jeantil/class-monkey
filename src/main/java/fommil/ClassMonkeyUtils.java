@@ -3,23 +3,28 @@
 package fommil;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The obligatory *Utils class.
  */
-final class ClassMonkeyUtils {
+public final class ClassMonkeyUtils {
+    private static final Logger log = Logger.getLogger(ClassMonkeyUtils.class.getName());
+
     private ClassMonkeyUtils () { }
 
     /**
      * Fully consume an InputStream into a byte array, and close the input.
      */
-    static byte[] slurp(InputStream in) throws IOException {
+    public static byte[] slurp(InputStream in) throws IOException {
         if (in == null) throw new NullPointerException("`in' must not be null");
         try {
             int nRead;
@@ -37,7 +42,7 @@ final class ClassMonkeyUtils {
     /**
      * Perform the conversion without checked exceptions.
      */
-    static URL toURL(URI uri) {
+    public static URL toURL(URI uri) {
         if (uri == null) throw new NullPointerException("`uri' must not be null");
         try {
             return uri.toURL();
@@ -49,12 +54,20 @@ final class ClassMonkeyUtils {
     /**
      * Perform the conversion without checked exceptions.
      */
-    static URI toURI(URL url) {
+    public static URI toURI(URL url) {
         if (url == null) throw new NullPointerException("`url' must not be null");
         try {
+            String protocol = url.getProtocol();
+            if ("file".equals(protocol)) {
+                // Windows hacks
+                return new File(url.getFile()).toURI();
+            } else if ("jar".equals(protocol)) {
+                String cleaned = url.toExternalForm().replaceAll("^jar:file:([a-zA-Z]+):", "jar:file:///$1:").replace("\\", "/");
+                return URI.create(cleaned);
+            }
             return url.toURI();
         } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(url + " is not a valid URI", e);
+            throw new IllegalArgumentException("parsing " + url, e);
         }
     }
 }
