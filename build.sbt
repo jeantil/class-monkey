@@ -54,3 +54,10 @@ cancelable in Global := true
 fork := true
 
 unmanagedBase in Test := baseDirectory.value / "lib-test"
+
+artifact in (Compile, assembly) := {
+  val art = (artifact in (Compile, assembly)).value
+  art.copy(`classifier` = Some("assembly"))
+}
+
+addArtifact(artifact in (Compile, assembly), assembly)
