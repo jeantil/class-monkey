@@ -4,5 +4,11 @@ os:
 script:
   - curl https://raw.githubusercontent.com/paulp/sbt-extras/master/sbt -o sbt ; chmod 755 sbt
   - ./sbt test
+cache:
+  directories:
+  - $HOME/.sbt
+  - $HOME/.ivy2
+  - $HOME/.m2
+  - $HOME/.coursier
 notifications:
   email: false
