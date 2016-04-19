@@ -36,6 +36,9 @@ javaOptions in Test ++= Seq(
   "-Dlogback.configurationFile=logback-test.xml"
 )
 
+// match what sonatype wants
+assemblyJarName in assembly := { name.value + "-" + version.value + "-assembly.jar" }
+
 javaOptions in Test <++= (assembly) map { jar =>
   Seq("-javaagent:" + jar.getAbsolutePath)
 }
