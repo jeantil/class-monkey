@@ -116,10 +116,9 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                     } catch (IOException e) {
                         throw new IllegalArgumentException(uri + " is a bad archive", e);
                     }
-                } else if (path.endsWith("/"))
+                } else {
                     providers.add(new DirectoryResourceProvider(uri));
-                else
-                    throw new UnsupportedOperationException("Unknown archive: " + uri);
+                }
             } else {
                 throw new UnsupportedOperationException("Generic URL scheme: " + uri);
                 //providers.add(new GenericResourceProvider(uri, factory));
