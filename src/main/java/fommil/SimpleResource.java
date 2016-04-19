@@ -19,16 +19,17 @@ import java.util.jar.Manifest;
 final class SimpleResource extends sun.misc.Resource {
 
     private final String name;
-    private final URL url;
+    private final URL source, url;
     private final byte[] bytes;
 
     // assumes that creater is trusted and will not retain a reference to bytes
     // code can be null if this is not a .class file
-    SimpleResource(String name, URL url, byte[] bytes) {
+    SimpleResource(URL source, String name, URL url, byte[] bytes) {
         if (name == null) throw new IllegalArgumentException("`name' must not be null");
         if (url == null) throw new IllegalArgumentException("`url' must not be null");
         if (bytes == null) throw new IllegalArgumentException("`bytes' must not be null");
 
+        this.source = source;
         this.name = name;
         this.url = url;
         this.bytes = bytes;
@@ -66,11 +67,9 @@ final class SimpleResource extends sun.misc.Resource {
         return ByteBuffer.wrap(bytes.clone());
     }
 
-    // I don't really understand this one
     @Override
     public URL getCodeSourceURL() {
-        if (!name.endsWith(".class")) return null;
-        return url;
+        return source;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

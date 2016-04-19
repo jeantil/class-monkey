@@ -249,7 +249,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             File file = new File(find(name));
             InputStream is = new FileInputStream(file);
             byte[] bytes = ClassMonkeyUtils.slurp(is);
-            return new SimpleResource(name, toURL(found), bytes);
+            return new SimpleResource(toURL(base), name, toURL(found), bytes);
         }
 
         @Override
@@ -303,7 +303,12 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             name = name.replaceAll("^/", "");
             if (!entriesByName.containsKey(name)) return null;
             try {
-              return new URI("jar:" + archive + "!/" + name);
+                File file = new File(archive);
+                String path = file.getCanonicalPath().replaceAll("^/*", "");
+                URI found = new URI("jar:file:///" + path + "!/" + name);
+                if (log.isLoggable(Level.FINE))
+                    log.fine(toString() + " find(" + name + ") = " + found);
+                return found;
             } catch (URISyntaxException e) {
                 throw new IOException(e);
             }
@@ -322,7 +327,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             ) {
                 InputStream in = zip.getInputStream(entry);
                 byte[] bytes = slurp(in);
-                return new SimpleResource(name, toURL(uri), bytes);
+                return new SimpleResource(toURL(archive), name, toURL(uri), bytes);
             }
         }
 
