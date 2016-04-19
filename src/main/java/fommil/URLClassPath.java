@@ -303,7 +303,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             if (!entriesByName.containsKey(name)) return null;
             try {
                 File file = new File(archive);
-                String path = file.getCanonicalPath().replaceAll("^/*", "");
+                String path = file.getCanonicalPath().replace("\\", "/").replaceAll("^/*", "");
                 URI found = new URI("jar:file:///" + path + "!/" + name);
                 if (log.isLoggable(Level.FINE))
                     log.fine(toString() + " find(" + name + ") = " + found);
