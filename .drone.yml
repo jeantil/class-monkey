@@ -13,7 +13,8 @@ build:
     - git clone --depth 1 https://github.com/ensime/ensime-server.git ;
       echo -javaagent:`find $PWD/target -name '*assembly.jar' -print` >> ensime-server/.jvmopts ;
       cd ensime-server ;
-      sbt test:compile it:compile test
+      sbt test:compile it:compile test ;
+      cd ..
     - if [ -z "$CI_PULL_REQUEST" ] ; then
         sbt publish ;
       fi
