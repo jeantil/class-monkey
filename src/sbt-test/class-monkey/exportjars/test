@@ -6,6 +6,11 @@
 
 > test
 
+# don't let SI-9632 get in the way
+> eval System.gc()
+> eval System.runFinalization()
+> eval System.gc()
+
 $ exists target/scala-2.10/exportjars_2.10-1.0.0.jar
 $ exists target/scala-2.10/exportjars_2.10-1.0.0-tests.jar
 $ delete target/scala-2.10/exportjars_2.10-1.0.0.jar

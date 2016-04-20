@@ -11,6 +11,3 @@ testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
 exportJars := true
 fork := true
 
-// don't let SI-9632 get in the way
-forcegc := true
-
