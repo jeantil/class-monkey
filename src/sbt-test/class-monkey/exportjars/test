@@ -1,0 +1,14 @@
+# this test is only relevant on Windows
+# where stale references to the jars will
+# block file deletion of the jars.
+# https://github.com/sbt/sbt/issues/2496
+# https://github.com/fommil/sbt-big-project/issues/30
+
+> test
+
+$ exists target/scala-2.10/exportjars_2.10-1.0.0.jar
+$ exists target/scala-2.10/exportjars_2.10-1.0.0-tests.jar
+$ delete target/scala-2.10/exportjars_2.10-1.0.0.jar
+$ delete target/scala-2.10/exportjars_2.10-1.0.0-tests.jar
+$ absent target/scala-2.10/exportjars_2.10-1.0.0.jar
+$ absent target/scala-2.10/exportjars_2.10-1.0.0-tests.jar

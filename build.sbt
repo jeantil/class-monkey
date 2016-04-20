@@ -39,9 +39,9 @@ javaOptions in Test ++= Seq(
 // match what sonatype wants
 assemblyJarName in assembly := { name.value + "-" + version.value + "-assembly.jar" }
 
-javaOptions in Test <++= (assembly) map { jar =>
-  Seq("-javaagent:" + jar.getAbsolutePath)
-}
+javaOptions in Test ++= Seq(
+  "-javaagent:" + assembly.value.getAbsolutePath
+)
 
 packageOptions := Seq(
   Package.ManifestAttributes(
@@ -64,3 +64,15 @@ artifact in (Compile, assembly) := {
 }
 
 addArtifact(artifact in (Compile, assembly), assembly)
+
+// no point, it doesn't work because of the Manifest name
+publishArtifact in Compile := false
+
+scriptedSettings
+
+scriptedLaunchOpts := Seq(
+  "-XX:MaxPermSize=256m", "-Xss2m", "-Xmx256m",
+  // WORKAROUND https://github.com/sbt/sbt/issues/2568
+  "-javaagent:" + target.value.getAbsolutePath + "/" + name.value + "-" + version.value + "-assembly.jar"
+)
+scriptedBufferLog := false

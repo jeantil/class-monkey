@@ -7,7 +7,7 @@ build:
   commands:
     - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
     - git log | head -n 20
-    - sbt test
+    - sbt assembly test scripted
     - if [ -z "$CI_PULL_REQUEST" ] ; then
         sbt publish ;
       fi
