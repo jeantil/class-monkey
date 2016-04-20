@@ -1,3 +1,5 @@
+branches:
+  - master
 build:
   image: ensime/ensime:v2.x
   pull: true
