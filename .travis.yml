@@ -4,6 +4,10 @@ os:
 script:
   - curl https://raw.githubusercontent.com/paulp/sbt-extras/master/sbt -o sbt ; chmod 755 sbt
   - ./sbt assembly test scripted
+  - git clone --depth 1 https://github.com/ensime/ensime-server.git ;
+    echo -javaagent:`find $PWD/target -name '*assembly.jar' -print` >> ensime-server/.jvmopts ;
+    cd ensime-server ;
+    ../sbt test:compile it:compile test
 cache:
   directories:
   - $HOME/.sbt

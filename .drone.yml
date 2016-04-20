@@ -8,6 +8,10 @@ build:
     - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
     - git log | head -n 20
     - sbt assembly test scripted
+    - git clone --depth 1 https://github.com/ensime/ensime-server.git ;
+      echo -javaagent:`find $PWD/target -name '*assembly.jar' -print` >> ensime-server/.jvmopts ;
+      cd ensime-server ;
+      sbt test:compile it:compile test
     - if [ -z "$CI_PULL_REQUEST" ] ; then
         sbt publish ;
       fi
