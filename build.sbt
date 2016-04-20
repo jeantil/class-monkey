@@ -65,9 +65,6 @@ artifact in (Compile, assembly) := {
 
 addArtifact(artifact in (Compile, assembly), assembly)
 
-// no point, it doesn't work because of the Manifest name
-publishArtifact in Compile := false
-
 resolvers += Resolver.typesafeIvyRepo("releases")
 
 scriptedSettings
