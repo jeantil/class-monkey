@@ -12,6 +12,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
  * The obligatory *Utils class.
@@ -36,6 +39,45 @@ public final class ClassMonkeyUtils {
             return out.toByteArray();
         } finally {
             in.close();
+        }
+    }
+
+    public static byte[] deflate(byte[] data) throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Deflater deflater = new Deflater();
+            try {
+                deflater.setInput(data);
+                deflater.finish();
+
+                byte[] buffer = new byte[1024];
+                while (!deflater.finished()) {
+                    int count = deflater.deflate(buffer);
+                    out.write(buffer, 0, count);
+                }
+                return out.toByteArray();
+            } finally {
+                deflater.end();
+            }
+        }
+    }
+
+    public static byte[] enflate(byte[] data) throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Inflater inflater = new Inflater();
+            try {
+                inflater.setInput(data);
+
+                byte[] buffer = new byte[1024];
+                while (!inflater.finished()) {
+                    int count = inflater.inflate(buffer);
+                    out.write(buffer, 0, count);
+                }
+                return out.toByteArray();
+            } finally {
+                inflater.end();
+            }
+        } catch (DataFormatException e) {
+            throw new IOException(e);
         }
     }
 

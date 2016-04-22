@@ -5,11 +5,14 @@ package fommil;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.CodeSigner;
 import java.util.Arrays;
 import java.util.jar.Manifest;
+
+import static fommil.ClassMonkeyUtils.*;
 
 /**
  * Clean-room implementation (not subject to the Oracle licences) of
@@ -19,20 +22,26 @@ import java.util.jar.Manifest;
 final class SimpleResource extends sun.misc.Resource {
 
     private final String name;
-    private final URL source, url;
-    private final byte[] bytes;
+    private final URI source, loc;
+    private final byte[] compressed;
+    private final int length;
 
     // assumes that creater is trusted and will not retain a reference to bytes
     // code can be null if this is not a .class file
-    SimpleResource(URL source, String name, URL url, byte[] bytes) {
+    SimpleResource(URI source, String name, URI loc, byte[] bytes) throws IOException {
         if (name == null) throw new IllegalArgumentException("`name' must not be null");
-        if (url == null) throw new IllegalArgumentException("`url' must not be null");
+        if (loc == null) throw new IllegalArgumentException("`loc' must not be null");
         if (bytes == null) throw new IllegalArgumentException("`bytes' must not be null");
 
         this.source = source;
         this.name = name;
-        this.url = url;
-        this.bytes = bytes;
+        this.loc = loc;
+        this.compressed = deflate(bytes);
+        this.length = bytes.length;
+    }
+
+    protected URI getLoc() {
+        return loc;
     }
 
     @Override
@@ -42,34 +51,34 @@ final class SimpleResource extends sun.misc.Resource {
 
     @Override
     public URL getURL() {
-        return url;
+        return toURL(loc);
     }
 
     @Override
     public byte[] getBytes() throws IOException {
-        return bytes.clone();
+        return enflate(compressed);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     // simple wrappers
     @Override
     public InputStream getInputStream() throws IOException {
-        return new ByteArrayInputStream(bytes);
+        return new ByteArrayInputStream(getBytes());
     }
 
     @Override
     public int getContentLength() throws IOException {
-        return bytes.length;
+        return length;
     }
 
     @Override
     public ByteBuffer getByteBuffer() throws IOException {
-        return ByteBuffer.wrap(bytes.clone());
+        return ByteBuffer.wrap(getBytes());
     }
 
     @Override
     public URL getCodeSourceURL() {
-        return source;
+        return toURL(source);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

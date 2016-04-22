@@ -13,6 +13,8 @@ final class ClassMonkey implements ClassFileTransformer {
 
     public static void premain(String agentArgs,
                                Instrumentation inst) {
+        if (System.getenv("CI") != null)
+            System.out.println("class-monkey instrumentation");
 
         if (!inst.isRetransformClassesSupported()) {
             log.warning("class monkey is disabled");

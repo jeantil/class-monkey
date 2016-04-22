@@ -13,21 +13,19 @@ install:
       }
   - cmd: SET JAVA_HOME=C:\Program Files\Java\jdk1.7.0
   - cmd: SET PATH=C:\sbt\sbt\bin;%JAVA_HOME%\bin;%PATH%
-  - cmd: SET SBT_OPTS=-XX:MaxPermSize=256m -Xss2m -Xmx1g
+  - cmd: SET SBT_OPTS=-XX:MaxPermSize=256m -Xss2m -Xms750m -Xmx750m
   - cmd: SET AKKA_TEST_TIMEFACTOR=10
   - cmd: SET SBT_TASK_LIMIT=2
   - cmd: git config core.symlinks true
   - cmd: git reset --hard
 build_script:
   - sbt assembly test scripted
-  - ps: |
-      $CLASS_MONKEY = Get-ChildItem -Path target -Filter *-assembly.jar
-      $env:SBT_OPTS = $env:SBT_OPTS + " -javaagent:" + $CLASS_MONKEY
-      git clone --depth 1 https://github.com/ensime/ensime-server.git
-      cp target/$CLASS_MONKEY ensime-server/
-      cd ensime-server
-      sbt test:compile it:compile
-      sbt test
+  - ps: $env:CLASS_MONKEY = Get-ChildItem -Path target -Filter *-assembly.jar
+  - ps: $env:SBT_OPTS = $env:SBT_OPTS + " -javaagent:" + $env:CLASS_MONKEY
+  - git clone --depth 1 https://github.com/ensime/ensime-server.git
+  - cp target/%CLASS_MONKEY% ensime-server/
+  - cd ensime-server
+  - sbt test:compile it:compile test
 cache:
   - C:\sbt\
   - C:\Users\appveyor\.ivy2

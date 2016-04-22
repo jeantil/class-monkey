@@ -3,8 +3,11 @@
 package fommil;
 
 import java.io.*;
+import java.lang.ref.SoftReference;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -101,7 +104,15 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                     URI jarURI = toURI(jarURL);
                     if (log.isLoggable(Level.FINE))
                         log.fine("addURL jarFileURL = " + jarURL + ", jarFileURI = " + jarURI);
-                    providers.add(new ArchiveResourceProvider(jarURI, connection.getEntryName()));
+                    ArchiveResourceProvider provider = ArchiveResourceCache.getOrCreate(jarURI);
+                    if (provider != null) {
+                        // legacy behaviour is to ignore files that don't exist
+                        String restriction = connection.getEntryName();
+                        if (restriction != null)
+                            providers.add(new RestrictedResourceProvider(provider, restriction));
+                        else
+                            providers.add(provider);
+                    }
                 } catch (IOException e) {
                     throw new IllegalArgumentException(uri + " is a bad archive", e);
                 }
@@ -112,7 +123,11 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
                 if (path.endsWith(".jar") || path.endsWith(".zip")) {
                     try {
-                        providers.add(new ArchiveResourceProvider(uri, null));
+                        ArchiveResourceProvider provider = ArchiveResourceCache.getOrCreate(uri);
+                        if (provider != null) {
+                            // legacy behaviour is to ignore files that don't exist
+                            providers.add(provider);
+                        }
                     } catch (IOException e) {
                         throw new IllegalArgumentException(uri + " is a bad archive", e);
                     }
@@ -121,7 +136,6 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                 }
             } else {
                 throw new UnsupportedOperationException("Generic URL scheme: " + uri);
-                //providers.add(new GenericResourceProvider(uri, factory));
             }
         }
     }
@@ -220,7 +234,31 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // the core implementation
     static interface ResourceProvider {
         URI find(String name) throws IOException;
-        SimpleResource get(String name)throws IOException;
+        SimpleResource get(String name) throws IOException;
+    }
+
+    /** Wraps another ResourceProvider but only allows queries to a subset of the allowed resources. */
+    static private final class RestrictedResourceProvider implements ResourceProvider {
+        private final String restriction;
+        private final ResourceProvider delegate;
+
+        public RestrictedResourceProvider(ResourceProvider delegate, String restriction) {
+            this.delegate = delegate;
+            this.restriction = restriction;
+        }
+
+        @Override
+        public URI find(String name) throws IOException {
+            name = name.replaceAll("^/+", "");
+            if (!name.startsWith(restriction)) return null;
+            return delegate.find(name);
+        }
+
+        @Override public SimpleResource get(String name) throws IOException {
+            name = name.replaceAll("^/+", "");
+            if (!name.startsWith(restriction)) return null;
+            return delegate.get(name);
+        }
     }
 
     static private final class DirectoryResourceProvider implements ResourceProvider {
@@ -248,12 +286,80 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             File file = new File(find(name));
             InputStream is = new FileInputStream(file);
             byte[] bytes = ClassMonkeyUtils.slurp(is);
-            return new SimpleResource(toURL(base), name, toURL(found), bytes);
+            return new SimpleResource(base, name, found, bytes);
         }
 
         @Override
         public String toString() {
             return "DirectoryResourceProvider(" + base + ")";
+        }
+    }
+
+    /**
+     * Shares a JVM-wide cache of resources.
+     */
+    static final class ArchiveResourceCache {
+        // no ConcurrentSoftHashMap in the stdlib
+        // http://stackoverflow.com/questions/2255950/
+        // https://grizzly.java.net/docs/1.9/apidocs/com/sun/grizzly/util/ConcurrentWeakHashMap.html
+        private static final ConcurrentMap<ArchiveResourceKey, SoftReference<ArchiveResourceProvider>> cache = new ConcurrentHashMap<>();
+
+        public static ArchiveResourceProvider getOrCreate(URI source) throws IOException {
+            File file = new File(source);
+            if (!file.isFile()) return null;
+
+            ArchiveResourceKey key = new ArchiveResourceKey(file);
+
+            SoftReference<ArchiveResourceProvider> ref = cache.get(key);
+            ArchiveResourceProvider cached = ref == null ? null : ref.get();
+
+            if (cached == null) {
+                ArchiveResourceProvider created = new ArchiveResourceProvider(source);
+                SoftReference<ArchiveResourceProvider> race = cache.putIfAbsent(key, new SoftReference<>(created));
+                ArchiveResourceProvider got = race == null ? null : race.get();
+                if (got == null) return created;
+                else return got;
+            }
+
+            long lastModified = file.lastModified();
+            long length = file.length();
+
+            if (cached.getLastModified() != lastModified || cached.getLength() != length) {
+                ArchiveResourceProvider created = new ArchiveResourceProvider(source);
+                cache.replace(key, new SoftReference<>(created));
+                return created;
+            }
+
+            return cached;
+        }
+
+    }
+
+    /**
+     * Used to cache instances of ArchiveResourceProvider across a
+     * JVM. Really just a wrapper over String.
+     */
+    static final class ArchiveResourceKey {
+        private final String key;
+
+        public ArchiveResourceKey(File file) throws IOException {
+            this.key = file.getCanonicalPath().intern();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof ArchiveResourceKey)) return false;
+            return key == ((ArchiveResourceKey)other).key;
+        }
+
+        @Override
+        public int hashCode() {
+            return key.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return key;
         }
     }
 
@@ -263,48 +369,58 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         // handles, which is no good at all, so drop down to old
         // fashioned JarFile / ZipFile access.
 
-        private final URI archive;
-        private final String base;
-        private final Map<String, ZipEntry> entriesByName = new HashMap<>();
+        private final URI source;
+        private final File file;
+        private final String path;
+        private final long lastModified;
+        private final long length;
 
-        public ArchiveResourceProvider(URI uri, String base) throws IOException {
-            this.archive = uri;
-            this.base = base;
+        // kept lazy to reduce memory requirements
+        private final ConcurrentMap<String, SimpleResource> cache = new ConcurrentHashMap<>();
+        private final Map<String, ZipEntry> entries = new HashMap<>();
 
-            File file = new File(uri);
-            // legacy behaviour is to ignore files that don't exist
-            if (!file.isFile()) return;
+        public ArchiveResourceProvider(URI source) throws IOException {
+            this.source = source;
+
+            this.file = new File(source).getCanonicalFile();
+            this.lastModified = file.lastModified();
+            this.length = file.length();
+
+            this.path = "jar:file:///" + file.getPath().replace("\\", "/").replaceAll("^/*", "") + "!/";
 
             try (
                  ZipFile zip = new ZipFile(file);
             ) {
-                List<? extends ZipEntry> entries = Collections.list(zip.entries());
-                for (ZipEntry entry : entries) {
+                for (ZipEntry entry : Collections.list(zip.entries())) {
                     String name = entry.getName();
-                    if ((base == null || name.startsWith(base)) && !name.endsWith("/")) {
-                        if (log.isLoggable(Level.FINEST))
-                            log.finest(toString() + " += '" + name + "'");
-                        entriesByName.put(name, entry);
-                    }
+                    if (log.isLoggable(Level.FINEST))
+                        log.finest(toString() + " += '" + name + "'");
+                    entries.put(name, entry);
                 }
             } catch (RuntimeException e) {
-                throw new IllegalArgumentException(uri + " is a bad archive", e);
+                throw new IllegalArgumentException(file + " is a bad archive", e);
             }
 
             if (log.isLoggable(Level.FINER))
-                log.finer(toString() + " base=" + base);
+                log.finer(toString());
+        }
+
+        public long getLastModified() {
+            return lastModified;
+        }
+
+        public long getLength() {
+            return length;
         }
 
         @Override
         public URI find(String name) throws IOException {
             if (log.isLoggable(Level.FINEST))
                 log.finest(toString() + ".find(" + name + ")");
-            name = name.replaceAll("^/", "");
-            if (!entriesByName.containsKey(name)) return null;
+            name = name.replaceAll("^/+", "");
+            if (!entries.containsKey(name)) return null;
             try {
-                File file = new File(archive);
-                String path = file.getCanonicalPath().replace("\\", "/").replaceAll("^/*", "");
-                URI found = new URI("jar:file:///" + path + "!/" + name);
+                URI found = new URI(path + name);
                 if (log.isLoggable(Level.FINE))
                     log.fine(toString() + " find(" + name + ") = " + found);
                 return found;
@@ -317,43 +433,29 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         public SimpleResource get(String name) throws IOException {
             if (log.isLoggable(Level.FINEST))
                 log.finest(toString() + ".get(" + name + ")");
-            name = name.replaceAll("^/", "");
-            ZipEntry entry = entriesByName.get(name);
-            URI uri = find(name);
-            if (entry == null || uri == null) return null;
-            try (
-                 ZipFile zip = new ZipFile(new File(archive));
-            ) {
+            name = name.replaceAll("^/+", "");
+
+            ZipEntry entry = entries.get(name);
+            if (entry == null) return null;
+
+            SimpleResource cached = cache.get(name);
+            if (cached != null) return cached;
+
+            try (ZipFile zip = new ZipFile(file)) {
+                URI loc = URI.create(path + name);
                 InputStream in = zip.getInputStream(entry);
                 byte[] bytes = slurp(in);
-                return new SimpleResource(toURL(archive), name, toURL(uri), bytes);
+                SimpleResource created = new SimpleResource(source, name, loc, bytes);
+                SimpleResource existing = cache.putIfAbsent(name, created);
+                if (existing != null) return existing;
+                else return created;
             }
         }
 
         @Override
         public String toString() {
-            return "ArchiveResourceProvider(" + archive + ")";
+            return "ArchiveResourceProvider(" + source + ")";
         }
     }
 
-    static final class GenericResourceProvider implements ResourceProvider {
-        private final URI base;
-        // factory is null to use the system default
-        private final URLStreamHandlerFactory factory;
-
-        public GenericResourceProvider(URI base, URLStreamHandlerFactory factory) {
-            this.base = base;
-            this.factory = factory;
-        }
-
-        @Override
-        public URI find(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-
-        @Override
-        public SimpleResource get(String name) {
-            throw new UnsupportedOperationException("TODO for " + name);
-        }
-    }
 }
