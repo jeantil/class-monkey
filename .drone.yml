@@ -1,3 +1,5 @@
+branches:
+  - include: [master, pull/*]
 build:
   image: ensime/ensime:v2.x-cache
   pull: true
@@ -5,7 +7,6 @@ build:
     - SONATYPE_USERNAME=$$SONATYPE_USERNAME
     - SONATYPE_PASSWORD=$$SONATYPE_PASSWORD
   commands:
-    - if [ -n "$CI_PULL_REQUEST" ] || [ "$CI_BRANCH" = "master" ] ; then true ; else false ; fi
     - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
     - git log | head -n 20
     - sbt assembly test scripted

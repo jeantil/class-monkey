@@ -39,6 +39,10 @@ javaOptions in Test ++= Seq(
 // match what sonatype wants
 assemblyJarName in assembly := { name.value + "-" + version.value + "-assembly.jar" }
 
+assemblyShadeRules in assembly := Seq(
+  ShadeRule.rename("org.objectweb.**" -> "fommil.asm.@1").inAll
+)
+
 javaOptions in Test ++= Seq(
   "-javaagent:" + assembly.value.getAbsolutePath
 )
