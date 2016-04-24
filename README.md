@@ -32,6 +32,16 @@ and there is a somewhat related resource management bug in `scalac`:
 
 This manifests as a memory leak in `sbt` on all platforms, but on Windows it is particularly bad because the OS uses read-write locks on file handles and the file cannot be deleted, moved or changed. **A catastrophic consequence is that compilations silently fail on Windows when using `exportJars`.**
 
+## Install
+
+Download the latest stable release from
+
+- https://repo1.maven.org/maven2/com/fommil/class-monkey/1.7.0/class-monkey-1.7.0-assembly.jar
+
+and add it to your `java` process as `-javaagent:/path/to/class-monkey-1.7.0-assembly.jar`. You must not rename the file or it will not work.
+
+Specifically for scala usage, you can add this flag to your `SBT_OPTS`.
+
 ## License
 
 The tests began as a copy of work from OpenJDK, and therefore are licensed under the [GPLv2 with classpath exception](http://openjdk.java.net/legal/gplv2+ce.html). This is unfortunate because the [GPLv2 is incompatible with the GPLv3](http://www.gnu.org/licenses/old-licenses/gpl-2.0.html).

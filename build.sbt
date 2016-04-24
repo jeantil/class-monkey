@@ -1,7 +1,7 @@
 organization := "com.fommil"
 name := "class-monkey"
 
-version := "1.7.0"
+version := "1.7.1-SNAPSHOT"
 
 autoScalaLibrary := false
 crossPaths := false
