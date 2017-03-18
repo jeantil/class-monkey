@@ -1,7 +1,4 @@
 organization := "com.fommil"
-name := "class-monkey"
-
-version := "1.7.1-SNAPSHOT"
 
 autoScalaLibrary := false
 crossPaths := false
@@ -10,11 +7,10 @@ sonatypeGithub := ("fommil", "class-monkey")
 licenses := Seq(("GPL 3.0 Classpath Exception" -> url("http://www.gnu.org/software/classpath/license.html")))
 
 libraryDependencies ++= Seq(
-  "org.ow2.asm" % "asm" % "5.1",
+  "org.ow2.asm" % "asm" % "5.2",
   "com.novocode" % "junit-interface" % "0.11" % "test",
   "junit" % "junit" % "4.12" % "test",
-  "ch.qos.logback" % "logback-classic" % "1.1.6" % "test",
-  "org.slf4j" % "jul-to-slf4j" % "1.7.19" % "test"
+  "org.slf4j" % "jul-to-slf4j" % "1.7.25" % "test"
 )
 
 testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
@@ -24,17 +20,13 @@ test in assembly := {}
 javacOptions in compile ++= Seq(
   "-source", "1.7",
   "-target", "1.7",
-  "-Xlint:all",
-  //"-Werror",
-  "-Xlint:-options",
-  "-Xlint:-path",
-  "-Xlint:-processing",
   "-XDignore.symbol.file"
 )
+javacOptions -= "-Werror" // must use internal APIs
+javacOptions in doc ~= (_.filterNot(_.startsWith("-Xlint")))
 
 javaOptions in Test ++= Seq(
-  s"-Dtest.resources.dir=${(resourceDirectory in Test).value}",
-  "-Dlogback.configurationFile=logback-test.xml"
+  s"-Dtest.resources.dir=${(resourceDirectory in Test).value}"
 )
 
 // match what sonatype wants
@@ -58,9 +50,6 @@ packageOptions := Seq(
   )
 )
 
-cancelable in Global := true
-fork := true
-
 unmanagedBase in Test := baseDirectory.value / "lib-test"
 
 artifact in (Compile, assembly) := {
@@ -70,10 +59,9 @@ artifact in (Compile, assembly) := {
 
 addArtifact(artifact in (Compile, assembly), assembly)
 
+// needed for scripted
 resolvers += Resolver.typesafeIvyRepo("releases")
-
 scriptedSettings
-
 scriptedLaunchOpts := Seq(
   "-XX:MaxPermSize=256m", "-Xss2m", "-Xmx256m",
   // WORKAROUND https://github.com/sbt/sbt/issues/2568

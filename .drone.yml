@@ -1,5 +1,3 @@
-branches:
-  - include: master
 pipeline:
   build:
     image: ensime/ensime:v2.x-cache
@@ -19,3 +17,5 @@ matrix:
   JAVA_VERSION:
     - 1.7
     - 1.8
+
+branches: [ master ]
