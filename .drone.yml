@@ -5,13 +5,16 @@ pipeline:
     commands:
       - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
       - git log | head -n 20 ; git fetch -q --tags
+      - echo $JAVA_VERSION > .java-version
       - sbt assembly test scripted
-      - git clone --depth 1 --branch 1.0 https://github.com/ensime/ensime-server.git &&
-        cd ensime-server &&
-        echo "sbt.version=0.13.13" > project/build.properties &&
-        sbt test:compile it:compile test &&
+      - git clone --depth 1 --branch 1.0 https://github.com/ensime/ensime-server.git ;
+        echo -javaagent:`find $PWD/target -name '*assembly.jar' -print` >> ensime-server/.jvmopts ;
+        cd ensime-server ;
+        echo $JAVA_VERSION > .java-version ;
+        echo "sbt.version=0.13.13" > project/build.properties ;
+        sbt test:compile it:compile ;
         cd ..
-      - if [ -z "$CI_PULL_REQUEST" ] ; then sbt publish ; fi
+      - if [ -z "$DRONE_PULL_REQUEST" ] ; then sbt publish ; fi
 
 matrix:
   JAVA_VERSION:
