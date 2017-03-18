@@ -36,8 +36,8 @@ This manifests as a memory leak in `sbt` on all platforms, but on Windows it is 
 
 Download the latest stable release from
 
-- https://repo1.maven.org/maven2/com/fommil/class-monkey/1.7.0/class-monkey-1.7.0-assembly.jar
+- https://repo1.maven.org/maven2/com/fommil/class-monkey/1.7.1/class-monkey-1.7.1-assembly.jar
 
-and add it to your `java` process as `-javaagent:/path/to/class-monkey-1.7.0-assembly.jar`. You must not rename the file or it will not work.
+and add it to your `java` process as `-javaagent:/path/to/class-monkey-1.7.1-assembly.jar`. You must not rename the file or it will not work.
 
 Specifically for scala usage, you can add this flag to your `SBT_OPTS`.
