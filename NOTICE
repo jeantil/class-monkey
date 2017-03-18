@@ -1,0 +1,13 @@
+class-monkey
+Copyright 2016 - 2017 Sam Halliday
+
+The Java Agent itself and alternative `URLClassPath` implementation is
+my own creation and I have chosen to use the [GPLv3 with classpath
+exception](http://www.gnu.org/software/classpath/license.html) (the
+same as GNU Classpath).
+
+The tests began as a copy of work from OpenJDK, and therefore are
+licensed under the [GPLv2 with classpath
+exception](http://openjdk.java.net/legal/gplv2+ce.html). This is
+unfortunate because the [GPLv2 is incompatible with the
+GPLv3](http://www.gnu.org/licenses/old-licenses/gpl-2.0.html).

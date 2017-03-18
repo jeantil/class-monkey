@@ -1,6 +1,6 @@
 | Windows | GNU / Linux | OS X |
 |---------|-------------|------|
-| [![Build status](https://ci.appveyor.com/api/projects/status/9if66b9ymuddko8a?svg=true)](https://ci.appveyor.com/project/fommil/class-monkey) | [![Build Status](http://fommil.com/api/badges/fommil/class-monkey/status.svg)](http://fommil.com/fommil/class-monkey) | [![Build Status](https://travis-ci.org/fommil/class-monkey.svg?branch=master)](https://travis-ci.org/fommil/class-monkey) |
+| [![Build status](https://ci.appveyor.com/api/projects/status/9if66b9ymuddko8a?svg=true)](https://ci.appveyor.com/project/fommil/class-monkey) | [![Build Status](https://ci.fommil.com/api/badges/fommil/class-monkey/status.svg)](https://ci.fommil.com/fommil/class-monkey) | [![Build Status](https://travis-ci.org/fommil/class-monkey.svg?branch=master)](https://travis-ci.org/fommil/class-monkey) |
 
 There is a (reasonably) well-known bug in the JVM, that the URL classloader does not release its jars
 
@@ -41,11 +41,3 @@ Download the latest stable release from
 and add it to your `java` process as `-javaagent:/path/to/class-monkey-1.7.0-assembly.jar`. You must not rename the file or it will not work.
 
 Specifically for scala usage, you can add this flag to your `SBT_OPTS`.
-
-## License
-
-The tests began as a copy of work from OpenJDK, and therefore are licensed under the [GPLv2 with classpath exception](http://openjdk.java.net/legal/gplv2+ce.html). This is unfortunate because the [GPLv2 is incompatible with the GPLv3](http://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
-
-The Java Agent itself and alternative `URLClassPath` implementation is my own creation and I have chosen to use the [GPLv3 with classpath exception](http://www.gnu.org/software/classpath/license.html) (the same as GNU Classpath).
-
-Please see the `LICENSE` file in the respective folder for further information.

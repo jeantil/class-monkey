@@ -6,7 +6,8 @@ version := "1.7.1-SNAPSHOT"
 autoScalaLibrary := false
 crossPaths := false
 
-SonatypeSupport.sonatype("fommil", "class-monkey", SonatypeSupport.GPL3ce)
+sonatypeGithub := ("fommil", "class-monkey")
+licenses := Seq(("GPL 3.0 Classpath Exception" -> url("http://www.gnu.org/software/classpath/license.html")))
 
 libraryDependencies ++= Seq(
   "org.ow2.asm" % "asm" % "5.1",
