@@ -5,6 +5,7 @@ package fommil;
 import java.io.*;
 import java.lang.ref.SoftReference;
 import java.net.*;
+import java.security.AccessControlContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,7 +35,10 @@ import static fommil.ClassMonkeyUtils.*;
  * be using network classloaders in this day and age).
  *
  * No security checking is performed: all URIs and user requests are
- * trusted to the extend that the JVM's security manager allows.
+ * trusted to the extend that the JVM's security manager allows. The
+ * AccessControlContext parameter (added in Java 1.8.0 u121
+ * http://hg.openjdk.java.net/jdk8u/jdk8u/jdk/rev/dfa1648415a4) is
+ * completely ignored.
  */
 final public class URLClassPath extends sun.misc.URLClassPath {
     private static final Logger log = Logger.getLogger(URLClassPath.class.getName());
@@ -57,9 +61,17 @@ final public class URLClassPath extends sun.misc.URLClassPath {
         }
     }
 
+    public URLClassPath(URL[] urls, URLStreamHandlerFactory factory, AccessControlContext acc) {
+        this(urls, factory);
+    }
+
     // convenience constructor used by URLClassLoader
     public URLClassPath(URL[] urls) {
-        this(urls, null);
+        this(urls, null, null);
+    }
+
+    public URLClassPath(URL[] urls, AccessControlContext acc) {
+        this(urls, null, acc);
     }
 
     // legacy behaviour is to reject all future calls, even though we
