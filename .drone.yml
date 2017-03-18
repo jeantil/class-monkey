@@ -1,20 +1,22 @@
 branches:
-  - include: [master, pull/*]
-build:
-  image: ensime/ensime:v2.x-cache
-  pull: true
-  environment:
-    - SONATYPE_USERNAME=$$SONATYPE_USERNAME
-    - SONATYPE_PASSWORD=$$SONATYPE_PASSWORD
-  commands:
-    - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
-    - git log | head -n 20
-    - sbt assembly test scripted
-    - git clone --depth 1 https://github.com/ensime/ensime-server.git ;
-      echo -javaagent:`find $PWD/target -name '*assembly.jar' -print` >> ensime-server/.jvmopts ;
-      cd ensime-server ;
-      sbt test:compile it:compile test ;
-      cd ..
-    - if [ -z "$CI_PULL_REQUEST" ] ; then
-        sbt publish ;
-      fi
+  - include: master
+pipeline:
+  build:
+    image: ensime/ensime:v2.x-cache
+    pull: true
+    commands:
+      - host `curl -s http://httpbin.org/ip | jq -r '.origin'` || true ;
+      - git log | head -n 20 ; git fetch -q --tags
+      - sbt assembly test scripted
+      - git clone --depth 1 --branch 1.0 https://github.com/ensime/ensime-server.git &&
+        cd ensime-server &&
+        echo "sbt.version=0.13.13" > project/build.properties &&
+        sbt test:compile it:compile test &&
+        cd ..
+      - if [ -z "$CI_PULL_REQUEST" ] ; then sbt publish ; fi
+
+matrix:
+  JAVA_VERSION:
+    - 1.6
+    - 1.7
+    - 1.8
