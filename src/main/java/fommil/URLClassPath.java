@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.*;
+//import java.util.logging.*;
 import java.util.zip.*;
 
 import static fommil.ClassMonkeyUtils.*;
@@ -41,7 +41,7 @@ import static fommil.ClassMonkeyUtils.*;
  * completely ignored.
  */
 final public class URLClassPath extends sun.misc.URLClassPath {
-    private static final Logger log = Logger.getLogger(URLClassPath.class.getName());
+//    private static final Logger log = Logger.getLogger(URLClassPath.class.getName());
 
     // recall that java.net.URL#equals will use a DNS, so avoid URL in collections
     private final CopyOnWriteArraySet<URI> uris = new CopyOnWriteArraySet<>();
@@ -78,8 +78,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // have nothing to close
     @Override
     public List<IOException> closeLoaders() {
-        if (log.isLoggable(Level.FINER))
-            log.finer("closeLoaders()");
+        //if (log.isLoggable(Level.FINER))
+        //    log.finer("closeLoaders()");
         closed.set(true);
         return Collections.emptyList();
     }
@@ -101,8 +101,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     // for simplicity of implementation.
     @Override
     public void addURL(URL url) {
-        if (log.isLoggable(Level.FINER))
-            log.finer("addURL(" + url + ")");
+        //if (log.isLoggable(Level.FINER))
+        //    log.finer("addURL(" + url + ")");
         if (closed.get() || url == null) return;
 
         URI uri = toURI(url);
@@ -114,8 +114,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                     JarURLConnection connection = (JarURLConnection) url.openConnection();
                     URL jarURL = connection.getJarFileURL();
                     URI jarURI = toURI(jarURL);
-                    if (log.isLoggable(Level.FINE))
-                        log.fine("addURL jarFileURL = " + jarURL + ", jarFileURI = " + jarURI);
+                    //if (log.isLoggable(Level.FINE))
+                    //    log.fine("addURL jarFileURL = " + jarURL + ", jarFileURI = " + jarURI);
                     ArchiveResourceProvider provider = ArchiveResourceCache.getOrCreate(jarURI);
                     if (provider != null) {
                         // legacy behaviour is to ignore files that don't exist
@@ -174,8 +174,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                 URI found = provider.find(name);
                 if (found != null) return toURL(found);
             }
-            if (log.isLoggable(Level.FINE))
-                log.fine("findResource missed: " + name);
+            //if (log.isLoggable(Level.FINE))
+            //    log.fine("findResource missed: " + name);
             return null;
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -190,8 +190,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                 SimpleResource found = provider.get(name);
                 if (found != null) return found;
             }
-            if (log.isLoggable(Level.FINE))
-                log.fine("getResource missed: " + name);
+            //if (log.isLoggable(Level.FINE))
+            //    log.fine("getResource missed: " + name);
             return null;
         } catch (IOException e) {
             throw new IllegalStateException("while finding " + name, e);
@@ -214,8 +214,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             for (URI uri : all) {
                 urls.add(toURL(uri));
             }
-            if (log.isLoggable(Level.FINE) && urls.isEmpty())
-                log.fine("findResources missed: " + name);
+            //if (log.isLoggable(Level.FINE) && urls.isEmpty())
+            //    log.fine("findResources missed: " + name);
 
             return Collections.enumeration(urls);
         } catch (IOException e) {
@@ -233,8 +233,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
                 if (found != null)
                     all.add(found);
             }
-            if (log.isLoggable(Level.FINE) && all.isEmpty())
-                log.fine("getResources missed: " + name);
+            //if (log.isLoggable(Level.FINE) && all.isEmpty())
+            //    log.fine("getResources missed: " + name);
 
             return Collections.enumeration(all);
         } catch (IOException e) {
@@ -274,7 +274,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     }
 
     static private final class DirectoryResourceProvider implements ResourceProvider {
-        private static final Logger log = Logger.getLogger(DirectoryResourceProvider.class.getName());
+        // private static final Logger log = Logger.getLogger(DirectoryResourceProvider.class.getName());
 
         // should we perhaps be using the nio FileSystem API?
         private final URI base;
@@ -376,7 +376,7 @@ final public class URLClassPath extends sun.misc.URLClassPath {
     }
 
     static final class ArchiveResourceProvider implements ResourceProvider {
-        private static final Logger log = Logger.getLogger(ArchiveResourceProvider.class.getName());
+        //private static final Logger log = Logger.getLogger(ArchiveResourceProvider.class.getName());
         // The nio FileSystem API is reported to keep persistent file
         // handles, which is no good at all, so drop down to old
         // fashioned JarFile / ZipFile access.
@@ -405,16 +405,16 @@ final public class URLClassPath extends sun.misc.URLClassPath {
             ) {
                 for (ZipEntry entry : Collections.list(zip.entries())) {
                     String name = entry.getName();
-                    if (log.isLoggable(Level.FINEST))
-                        log.finest(toString() + " += '" + name + "'");
+                    //if (log.isLoggable(Level.FINEST))
+                    //    log.finest(toString() + " += '" + name + "'");
                     entries.put(name, entry);
                 }
             } catch (RuntimeException e) {
                 throw new IllegalArgumentException(file + " is a bad archive", e);
             }
 
-            if (log.isLoggable(Level.FINER))
-                log.finer(toString());
+            //if (log.isLoggable(Level.FINER))
+            //    log.finer(toString());
         }
 
         public long getLastModified() {
@@ -427,14 +427,14 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
         @Override
         public URI find(String name) throws IOException {
-            if (log.isLoggable(Level.FINEST))
-                log.finest(toString() + ".find(" + name + ")");
+            //if (log.isLoggable(Level.FINEST))
+            //    log.finest(toString() + ".find(" + name + ")");
             name = name.replaceAll("^/+", "");
             if (!entries.containsKey(name)) return null;
             try {
                 URI found = new URI(path + name);
-                if (log.isLoggable(Level.FINE))
-                    log.fine(toString() + " find(" + name + ") = " + found);
+                //if (log.isLoggable(Level.FINE))
+                //    log.fine(toString() + " find(" + name + ") = " + found);
                 return found;
             } catch (URISyntaxException e) {
                 throw new IOException(e);
@@ -443,8 +443,8 @@ final public class URLClassPath extends sun.misc.URLClassPath {
 
         @Override
         public SimpleResource get(String name) throws IOException {
-            if (log.isLoggable(Level.FINEST))
-                log.finest(toString() + ".get(" + name + ")");
+            //if (log.isLoggable(Level.FINEST))
+            //    log.finest(toString() + ".get(" + name + ")");
             name = name.replaceAll("^/+", "");
 
             ZipEntry entry = entries.get(name);

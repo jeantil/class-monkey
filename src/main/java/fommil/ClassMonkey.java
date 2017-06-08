@@ -4,12 +4,12 @@ package fommil;
 
 import java.lang.instrument.*;
 import java.security.ProtectionDomain;
-import java.util.logging.*;
+//import java.util.logging.*;
 
 import org.objectweb.asm.*;
 
 final class ClassMonkey implements ClassFileTransformer {
-    static private final Logger log = Logger.getLogger(ClassMonkey.class.getName());
+//    static private final Logger log = Logger.getLogger(ClassMonkey.class.getName());
 
     public static void premain(String agentArgs,
                                Instrumentation inst) {
@@ -17,7 +17,7 @@ final class ClassMonkey implements ClassFileTransformer {
             System.out.println("class-monkey instrumentation");
 
         if (!inst.isRetransformClassesSupported()) {
-            log.warning("class monkey is disabled");
+            //log.warning("class monkey is disabled");
         } else {
             inst.addTransformer(new ClassMonkey(), true);
 
@@ -25,13 +25,13 @@ final class ClassMonkey implements ClassFileTransformer {
                 // must be loaded in advance or it dumps the core
                 Class.forName("fommil.URLClassPath");
             } catch (Throwable t) {
-                log.warning("Failed to load fommil's URLClassPath. Monkey fail.");
+             //   log.warning("Failed to load fommil's URLClassPath. Monkey fail.");
             }
 
             try {
                 inst.retransformClasses(java.net.URLClassLoader.class);
             } catch (UnmodifiableClassException e) {
-                log.warning("Can't modify URLClassLoader. Monkeys are off.");
+               // log.warning("Can't modify URLClassLoader. Monkeys are off.");
             }
         }
 
@@ -60,7 +60,7 @@ final class ClassMonkey implements ClassFileTransformer {
 
             return updatedBytes;
         } catch (Throwable t) {
-            log.warning("bad monkey " + t.getClass());
+           // log.warning("bad monkey " + t.getClass());
             t.printStackTrace();
             throw t;
         }

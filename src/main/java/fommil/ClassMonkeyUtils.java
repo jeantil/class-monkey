@@ -10,8 +10,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+//import java.util.logging.Level;
+//import java.util.logging.Logger;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -20,7 +20,7 @@ import java.util.zip.Inflater;
  * The obligatory *Utils class.
  */
 public final class ClassMonkeyUtils {
-    private static final Logger log = Logger.getLogger(ClassMonkeyUtils.class.getName());
+//    private static final Logger log = Logger.getLogger(ClassMonkeyUtils.class.getName());
 
     private ClassMonkeyUtils () { }
 
